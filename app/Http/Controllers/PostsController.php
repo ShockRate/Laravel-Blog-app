@@ -7,7 +7,17 @@ use App\Post;
 use DB;
 
 class PostsController extends Controller
-{
+{   
+    /**
+     * Create a new controller instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        $this->middleware('auth', ['except' => ['index', 'show']]);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -55,8 +65,26 @@ class PostsController extends Controller
         
         $this->validate($request, [ 
             'title' => 'required',
-            'body' => 'required'
+            'body' => 'required',
+            'cover_image' => 'image|nullable|max:1999'
         ]);
+
+        //Handle File Upload
+
+        if($request->hasFile('cover_image')){
+            //Get filename with extension
+            $fileImageNameWithExt = $request->file('cover_image')->getClientOriginalName();
+            //Get just filename
+            $fileImagename = pathinfo($fileImageNameWithExt, PATHINFO_FILENAME);
+            //Get just ext
+            $extension = $request->file('cover_image')->getClientOriginalExtension();
+            //Upload image
+            //TO DO
+
+        }else{
+            $fileImageNameToStore ='noimage.jpg';
+        }
+
         //create post
         $post = new Post;
         $post->title = $request->input('title');
@@ -88,7 +116,12 @@ class PostsController extends Controller
     public function edit($id)
     {
         $post = Post::find($id);
-       return view('posts.edit')->with('post', $post);
+
+        //Check for correct user
+        if(auth()->user()->id !== $post->user_id){
+            return redirect('/posts')-> with('error', 'Unauthorised Page');
+        }
+        return view('posts.edit')->with('post', $post);
     }
 
     /**
@@ -121,6 +154,9 @@ class PostsController extends Controller
     public function destroy($id)
     {
         $post = Post::find($id);
+        if(auth()->user()->id !== $post->user_id){
+            return redirect('/posts')-> with('error', 'Unauthorised Page');
+        }
         $post->delete();  
         return redirect('/posts')->with('success', 'Post \''. $post->title . '\' Removed');  
     }
